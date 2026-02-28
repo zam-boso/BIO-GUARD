@@ -81,6 +81,6 @@ BIOGUARD AI is designed with localized processing principles to protect patient 
 
 ---
 
-## 🎯 Vision
+##  Vision
 
 To bridge antimicrobial resistance intelligence with real-time, explainable clinical decision support — ensuring safer and smarter antibiotic prescribing.
