@@ -1,0 +1,9 @@
+This ecosystem consists of two applications... 
+
+1. BIOGUARD Doctor's Assistive AI
+2. BIOGUARD Companion Agent
+
+---> The BIOGUARD Doctor's Assistive AI had sucessesfully been Bundeled to an .exe application.. but the BIOGUARD Companion Agent crashed in the processes of
+      being bundled.. So currently only the base Architecture of the Compainion Agent was uploaded.. but both applications **STILL WORK**, Companion Agent 
+      will work in a Node.js environment,by opening a terminal in the folder and using `npm start`.. Both applications still work together..
+      Thank you for understanding
