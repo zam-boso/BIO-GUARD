@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>BIOGUARD AI</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./patient.css">
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="brand">🧬 BIOGUARD AI</div>
+    <div class="system-name">Clinical Decision-Support System</div>
+    <div class="patient-id">Patient ID: <span id="patientId">demo123</span></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="side-icon">🧠</div>
+      <div class="side-icon">🧪</div>
+      <div class="side-icon">🛡️</div>
+      <div class="side-icon">⚙️</div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main">
+
+      <!-- OPTION CARDS -->
+      <div class="card-container">
+
+        <div class="card">
+          <h3>OPTION 1</h3>
+          <p>Current Infection</p>
+          <button onclick="sendMessage(); input.value='yes';">Select</button>
+        </div>
+
+        <div class="card">
+          <h3>OPTION 2</h3>
+          <p>General Pathogen Check</p>
+          <button onclick="sendMessage(); input.value='yes';">Select</button>
+        </div>
+
+        <div class="card">
+          <h3>OPTION 3</h3>
+          <p>Resistance Analysis</p>
+          <button onclick="sendMessage(); input.value='yes';">Select</button>
+        </div>
+
+      </div>
+
+      <!-- RAW DATA PANEL -->
+      <div class="raw-panel">
+        <h2>Patient Raw Data</h2>
+
+        <div class="raw-box">
+
+          <div class="raw-item">
+            <span>Organism</span>
+            <span>E. coli</span>
+          </div>
+
+          <div class="raw-item">
+            <span>ESBL</span>
+            <span class="high">Detected</span>
+          </div>
+
+          <div class="raw-item">
+            <span>NDM-1</span>
+            <span class="low">Not Detected</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHAT PANEL -->
+    <div class="chat">
+
+      <div class="chat-header">
+        BIOGUARD AI Assistant
+      </div>
+
+      <div id="chatMessages" class="chat-messages"></div>
+
+      <div class="chat-input">
+        <input 
+          id="chatInput" 
+          type="text" 
+          placeholder="Type your message..." 
+          onkeydown="if(event.key==='Enter'){sendMessage();}"
+        >
+        <button onclick="sendMessage()">Send</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script src="patient.js"></script>
+
+</body>
+</html>

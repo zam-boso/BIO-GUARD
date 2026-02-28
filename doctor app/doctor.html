@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BIOGUARD Doctor Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Notification Dropdown Styling */
+
+    .notif-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .notif-tray {
+      position: absolute;
+      right: 0;
+      top: 45px;
+      width: 320px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: white;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 10px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .notif-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .notif-item:last-child {
+      border-bottom: none;
+    }
+
+    .notif-item button {
+      margin-top: 6px;
+      padding: 5px 10px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .notif-item button:hover {
+      background: #218838;
+    }
+
+    .notif-item.severe {
+      background: #ffe6e6;
+      border-left: 4px solid red;
+    }
+
+    .notif-item.pending {
+      background: #fff7e6;
+      border-left: 4px solid orange;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="logo">🛡 BIOGUARD AI</div>
+
+  <div class="top-actions">
+    <input class="top-search" placeholder="Search Patient">
+
+    <div class="notif-wrapper">
+      <div class="notif" onclick="toggleTray()">🔔 <span id="notifCount">0</span></div>
+      <div id="notifTray" class="notif-tray"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="dashboard">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="tabs">
+      <div class="tab active">Today's Patients</div>
+      <div class="tab">High MDR Risk</div>
+      <div class="tab">Follow-ups</div>
+      <div class="tab">All Patients</div>
+    </div>
+
+    <div id="appointmentList"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div id="patientInfo" class="patient-card">
+      Select patient
+    </div>
+
+    <div class="clinical-grid">
+
+      <div class="severity-panel">
+        <div class="severity-title">Severity %</div>
+        <div id="severityPercent">0%</div>
+        <div class="severity-bg">
+          <div id="severityBar"></div>
+        </div>
+      </div>
+
+      <div class="graph-panel">
+        <div class="panel-title">Severity Analysis</div>
+        <canvas id="severityChart"></canvas>
+      </div>
+
+    </div>
+
+    <div class="effectiveness-panel">
+
+      <div class="effect-card green">
+        <div>Ciprofloxacin</div>
+        <div class="effect-percent">92% Effective</div>
+        <div class="risk-tag low">Low Risk</div>
+      </div>
+
+      <div class="effect-card yellow">
+        <div>Ceftriaxone</div>
+        <div class="effect-percent">78% Effective</div>
+        <div class="risk-tag moderate">Moderate Risk</div>
+      </div>
+
+      <div class="effect-card red">
+        <div>Meropenem</div>
+        <div class="effect-percent">55% Effective</div>
+        <div class="risk-tag high">High Risk</div>
+      </div>
+
+    </div>
+
+    <div class="mdr-panel">
+      <div class="panel-title">MDR Risk Level</div>
+      <div class="mdr-bar">
+        <div class="mdr-low">Low</div>
+        <div class="mdr-moderate">Moderate</div>
+        <div class="mdr-high">HIGH</div>
+      </div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="panel-title">AI Clinical Assistant</div>
+      <button class="primary-btn" onclick="generateInsight()">Generate Clinical Summary</button>
+
+      <div id="chatBox" class="chat-box"></div>
+
+      <div class="chat-input-row">
+        <input id="chatInput" placeholder="Ask clinical question...">
+        <button class="primary-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+    });
+  });
+</script>
+
+<script src="doctor.js"></script>
+
+</body>
+</html>

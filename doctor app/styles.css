@@ -1,0 +1,427 @@
+/* ================= GLOBAL ================= */
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #eef3f8;
+  overflow: hidden;
+}
+
+/* ================= TOP BAR ================= */
+
+.topbar {
+  height: 55px;
+  background: linear-gradient(90deg, #2e4c7e, #3c6db3);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.top-search {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 13px;
+}
+
+/* ================= LAYOUT ================= */
+
+.dashboard {
+  display: flex;
+  height: calc(100vh - 55px);
+}
+
+/* ================= SIDEBAR ================= */
+
+.sidebar {
+  width: 280px;
+  background: white;
+  padding: 15px;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+/* ================= TABS ================= */
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.tab {
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 5px;
+  transition: 0.2s;
+}
+
+.tab.active {
+  background: #3c6db3;
+  color: white;
+}
+
+.tab:hover {
+  background: #e6eef9;
+}
+
+/* ================= PATIENT TILE ================= */
+
+.patient-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f4f7fb;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.patient-tile:hover {
+  background: #e6eef9;
+  transform: translateY(-2px);
+}
+
+.patient-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #3c6db3;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.patient-info {
+  flex: 1;
+}
+
+.patient-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.patient-sub {
+  font-size: 11px;
+  color: #666;
+}
+
+.patient-severity {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.patient-severity.normal {
+  background: #d4edda;
+  color: #2e7d32;
+}
+
+.patient-severity.moderate {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.patient-severity.severe {
+  background: #f8d7da;
+  color: #842029;
+}
+
+/* ================= MAIN ================= */
+
+.main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* ================= PATIENT CARD ================= */
+
+.patient-card {
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* ================= CLINICAL GRID ================= */
+
+.clinical-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+/* ================= SEVERITY PANEL ================= */
+
+.severity-panel,
+.graph-panel,
+.effectiveness-panel,
+.mdr-panel,
+.ai-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.severity-title {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+#severityPercent {
+  font-size: 26px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.severity-bg {
+  background: #e4e7ec;
+  height: 10px;
+  border-radius: 6px;
+}
+
+#severityBar {
+  height: 10px;
+  border-radius: 6px;
+}
+
+/* ================= GRAPH FIX ================= */
+
+.graph-panel {
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+#severityChart {
+  height: 220px !important;
+  width: 100% !important;
+}
+
+/* ================= EFFECTIVENESS CARDS ================= */
+
+.effectiveness-panel {
+  display: flex;
+  gap: 15px;
+}
+
+.effect-card {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  color: white;
+  position: relative;
+  transition: 0.2s;
+  cursor: pointer;
+}
+
+.effect-card:hover {
+  transform: translateY(-3px);
+}
+
+.effect-card.green { background: #2ecc71; }
+.effect-card.yellow { background: #f1c40f; color: #333; }
+.effect-card.red { background: #e74c3c; }
+
+.effect-percent {
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.risk-tag {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.3);
+}
+
+/* ================= MDR BAR ================= */
+
+.mdr-bar {
+  display: flex;
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.mdr-low {
+  flex:1;
+  background:#2ecc71;
+  text-align:center;
+  font-size:11px;
+  line-height:20px;
+}
+
+.mdr-moderate {
+  flex:1;
+  background:#f1c40f;
+  text-align:center;
+  font-size:11px;
+  line-height:20px;
+}
+
+.mdr-high {
+  flex:1;
+  background:#e74c3c;
+  text-align:center;
+  font-size:11px;
+  line-height:20px;
+  color:white;
+}
+
+/* ================= AI PANEL ================= */
+
+.ai-panel {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+.primary-btn {
+  background: #3c6db3;
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.primary-btn:hover {
+  opacity: 0.9;
+}
+
+.chat-box {
+  flex: 1;
+  background: #f7f9fc;
+  border-radius: 8px;
+  padding: 8px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.user-msg {
+  background: #3c6db3;
+  color: white;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.bot-msg {
+  background: #e3eaf5;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chat-input-row input {
+  flex: 1;
+  padding: 6px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* ================= CHAT PATIENT TILE ================= */
+
+.chat-patient-header {
+  background: #3c6db3;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+/* ================= NOTIFICATION ================= */
+
+.notif-tray {
+  display: none;
+  position: absolute;
+  right: 20px;
+  top: 60px;
+  background: white;
+  width: 240px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  padding: 10px;
+}
+.notif-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.notif-dropdown {
+  position: absolute;
+  right: 0;
+  top: 40px;
+  width: 320px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: white;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 1000;
+}
+
+.hidden {
+  display: none;
+}
+
+.notif-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-item button {
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.notif-item button:hover {
+  background: #218838;
+}
