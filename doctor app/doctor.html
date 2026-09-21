@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com">
   <title>BIOGUARD Doctor Dashboard</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Bundled locally (npm install) so the app works without a CDN -->
+  <script src="node_modules/@supabase/supabase-js/dist/umd/supabase.js"></script>
+  <script src="node_modules/chart.js/dist/chart.umd.js"></script>
 
   <style>
     /* Notification Dropdown Styling */
@@ -71,10 +75,10 @@
   <div class="logo">🛡 BIOGUARD AI</div>
 
   <div class="top-actions">
-    <input class="top-search" placeholder="Search Patient">
+    <input id="patientSearch" class="top-search" placeholder="Search Patient">
 
     <div class="notif-wrapper">
-      <div class="notif" onclick="toggleTray()">🔔 <span id="notifCount">0</span></div>
+      <div id="notifBell" class="notif">🔔 <span id="notifCount">0</span></div>
       <div id="notifTray" class="notif-tray"></div>
     </div>
 
@@ -87,10 +91,10 @@
   <div class="sidebar">
 
     <div class="tabs">
-      <div class="tab active">Today's Patients</div>
-      <div class="tab">High MDR Risk</div>
-      <div class="tab">Follow-ups</div>
-      <div class="tab">All Patients</div>
+      <div class="tab active" data-filter="today">Today's Patients</div>
+      <div class="tab" data-filter="high">High MDR Risk</div>
+      <div class="tab" data-filter="follow">Follow-ups</div>
+      <div class="tab" data-filter="all">All Patients</div>
     </div>
 
     <div id="appointmentList"></div>
@@ -106,7 +110,7 @@
     <div class="clinical-grid">
 
       <div class="severity-panel">
-        <div class="severity-title">Severity %</div>
+        <div class="severity-title">Resistance Risk Score</div>
         <div id="severityPercent">0%</div>
         <div class="severity-bg">
           <div id="severityBar"></div>
@@ -114,67 +118,44 @@
       </div>
 
       <div class="graph-panel">
-        <div class="panel-title">Severity Analysis</div>
+        <div class="panel-title">Risk Breakdown</div>
         <canvas id="severityChart"></canvas>
       </div>
 
     </div>
 
-    <div class="effectiveness-panel">
-
-      <div class="effect-card green">
-        <div>Ciprofloxacin</div>
-        <div class="effect-percent">92% Effective</div>
-        <div class="risk-tag low">Low Risk</div>
-      </div>
-
-      <div class="effect-card yellow">
-        <div>Ceftriaxone</div>
-        <div class="effect-percent">78% Effective</div>
-        <div class="risk-tag moderate">Moderate Risk</div>
-      </div>
-
-      <div class="effect-card red">
-        <div>Meropenem</div>
-        <div class="effect-percent">55% Effective</div>
-        <div class="risk-tag high">High Risk</div>
-      </div>
-
+    <div class="panel-title">Empirical Options (rule-based)</div>
+    <div id="effectivenessPanel" class="effectiveness-panel">
+      <div class="empty-note">Select a patient to see options based on their resistance markers.</div>
+    </div>
+    <div class="disclaimer">
+      Demo logic from ESBL / NDM-1 markers and organism only. Not clinically validated.
+      Confirm with culture &amp; susceptibility results; final decision rests with the physician.
     </div>
 
     <div class="mdr-panel">
       <div class="panel-title">MDR Risk Level</div>
       <div class="mdr-bar">
-        <div class="mdr-low">Low</div>
-        <div class="mdr-moderate">Moderate</div>
-        <div class="mdr-high">HIGH</div>
+        <div id="mdrLow" class="mdr-low">Low</div>
+        <div id="mdrModerate" class="mdr-moderate">Moderate</div>
+        <div id="mdrHigh" class="mdr-high">High</div>
       </div>
     </div>
 
     <div class="ai-panel">
       <div class="panel-title">AI Clinical Assistant</div>
-      <button class="primary-btn" onclick="generateInsight()">Generate Clinical Summary</button>
+      <button id="summaryBtn" class="primary-btn">Generate Clinical Summary</button>
 
       <div id="chatBox" class="chat-box"></div>
 
       <div class="chat-input-row">
         <input id="chatInput" placeholder="Ask clinical question...">
-        <button class="primary-btn" onclick="sendMessage()">Send</button>
+        <button id="sendBtn" class="primary-btn">Send</button>
       </div>
     </div>
 
   </div>
 </div>
-
-<script>
-  const tabs = document.querySelectorAll(".tab");
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      tabs.forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-    });
-  });
-</script>
 
 <script src="doctor.js"></script>
 

@@ -1,306 +1,569 @@
-/* ================= SUPABASE ================= */
+/* ================= CONFIG =================
+ * Paste your keys below (Groq console / Supabase > Project Settings > API).
+ * Anything pushed to a public repo should be treated as burnable.
+ */
 
-const supabaseClient = supabase.createClient(
-  "https://ipzxppqiktomxbbcrauv.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4"
-);
+const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
 
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "PASTE_YOUR_GROQ_KEY_HERE";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ================= GLOBAL STATE ================= */
 
 let currentPatient = null;
 let chartInstance = null;
-let patientChats = {};
+let allPatients = [];
+const patientChats = {};
+const notifications = [];
 
 /* ================= INIT ================= */
 
-window.onload = () => {
-  loadPatients(getActiveTab());
-  realtime();
+window.addEventListener("DOMContentLoaded", () => {
   setupTabs();
+  setupControls();
+  loadPatients();
+  realtime();
+});
+
+function setupControls() {
+  document.getElementById("summaryBtn").addEventListener("click", generateInsight);
+  document.getElementById("sendBtn").addEventListener("click", sendMessage);
+  document.getElementById("chatInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+  document.getElementById("notifBell").addEventListener("click", toggleTray);
+  document.getElementById("patientSearch").addEventListener("input", renderPatientList);
+}
+
+/* ================= HELPERS ================= */
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+
+function isDetected(v) {
+  return String(v || "").trim().toLowerCase() === "detected";
+}
+
+/* ================= RESISTANCE RISK =================
+ * Derived from the markers the patient app actually records.
+ * NDM-1 (carbapenemase) > ESBL > none.
+ * If the row already has a severity value, use the higher of the two.
+ */
+
+const RISK_ORDER = { normal: 0, moderate: 1, severe: 2 };
+
+function getRisk(p) {
+  let risk = "normal";
+  if (isDetected(p.ndm1)) risk = "severe";
+  else if (isDetected(p.esbl)) risk = "moderate";
+
+  const stored = String(p.severity || "").toLowerCase();
+  if (stored in RISK_ORDER && RISK_ORDER[stored] > RISK_ORDER[risk]) risk = stored;
+  return risk;
+}
+
+const RISK_LABEL = { normal: "Low", moderate: "Moderate", severe: "High" };
+const RISK_SCORE = { normal: 25, moderate: 60, severe: 90 };
+
+/* ================= EMPIRICAL OPTIONS (rule-based demo) =================
+ * tier: "likely"  -> likely active
+ *       "uncertain" -> depends on local antibiogram / site of infection
+ *       "reserve" -> active but broader than needed (stewardship)
+ *       "unlikely"  -> likely inactive
+ * Ordered so narrower-spectrum active options appear first.
+ */
+
+function getEmpiricalOptions(p) {
+  const esbl = isDetected(p.esbl);
+  const ndm = isDetected(p.ndm1);
+  const organism = String(p.organism || "").toLowerCase();
+  const isProteus = organism.includes("proteus");
+
+  const opts = [];
+
+  // Nitrofurantoin (lower UTI only)
+  if (isProteus) {
+    opts.push({ drug: "Nitrofurantoin", tier: "unlikely", note: "Proteus is intrinsically resistant." });
+  } else {
+    opts.push({
+      drug: "Nitrofurantoin",
+      tier: ndm ? "uncertain" : "likely",
+      note: "Uncomplicated cystitis only; not for pyelonephritis or bacteraemia."
+    });
+  }
+
+  // Fosfomycin (lower UTI)
+  opts.push({
+    drug: "Fosfomycin",
+    tier: ndm ? "uncertain" : "likely",
+    note: "Oral option for uncomplicated cystitis."
+  });
+
+  // Ciprofloxacin
+  opts.push({
+    drug: "Ciprofloxacin",
+    tier: esbl || ndm ? "unlikely" : "uncertain",
+    note: esbl || ndm
+      ? "Frequent co-resistance with ESBL / carbapenemase producers."
+      : "High regional fluoroquinolone resistance; check local antibiogram."
+  });
+
+  // Ceftriaxone
+  opts.push({
+    drug: "Ceftriaxone",
+    tier: esbl || ndm ? "unlikely" : "likely",
+    note: esbl || ndm ? "Hydrolysed by ESBL / NDM enzymes." : "Standard option for pyelonephritis."
+  });
+
+  // Piperacillin-tazobactam
+  opts.push({
+    drug: "Piperacillin-tazobactam",
+    tier: ndm ? "unlikely" : esbl ? "uncertain" : "likely",
+    note: esbl && !ndm ? "Inferior to carbapenems for serious ESBL infections." : ""
+  });
+
+  // Meropenem
+  opts.push({
+    drug: "Meropenem",
+    // No markers: it works, but it's a carbapenem; don't nudge toward it.
+    tier: ndm ? "unlikely" : esbl ? "likely" : "reserve",
+    note: ndm
+      ? "NDM-1 is a carbapenemase."
+      : esbl
+        ? "Preferred for serious ESBL infections. Reserve-use: stewardship review."
+        : "Not needed without resistance markers; avoid to preserve carbapenems."
+  });
+
+  if (ndm) {
+    opts.push({
+      drug: "Ceftazidime-avibactam + Aztreonam",
+      tier: "likely",
+      note: "Combination used for metallo-β-lactamase producers. ID consult advised."
+    });
+    opts.push({
+      drug: "Colistin",
+      tier: isProteus ? "unlikely" : "uncertain",
+      note: isProteus
+        ? "Proteus is intrinsically resistant."
+        : "Last-resort; nephrotoxic. ID consult advised."
+    });
+  }
+
+  const rank = { likely: 0, uncertain: 1, reserve: 2, unlikely: 3 };
+  return opts.sort((a, b) => rank[a.tier] - rank[b.tier]);
+}
+
+const TIER_STYLE = {
+  likely: { cls: "green", label: "Likely active" },
+  uncertain: { cls: "yellow", label: "Uncertain" },
+  reserve: { cls: "grey", label: "Active, but reserve" },
+  unlikely: { cls: "red", label: "Likely inactive" }
 };
 
 /* ================= REALTIME ================= */
 
-function realtime(){
-  supabaseClient.channel("realtime")
-    .on("postgres_changes",
-      { event:"INSERT", schema:"public", table:"appointments" },
-      ()=>{
-        loadPatients(getActiveTab());
+function realtime() {
+  supabaseClient
+    .channel("realtime")
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "appointments" },
+      (payload) => {
+        if (payload && payload.new) addNotification(payload.new);
+        loadPatients();
       }
     )
     .subscribe();
 }
 
+/* ================= NOTIFICATIONS ================= */
+
+function addNotification(p) {
+  notifications.unshift(p);
+  document.getElementById("notifCount").textContent = String(notifications.length);
+  renderTray();
+}
+
+function renderTray() {
+  const tray = document.getElementById("notifTray");
+  tray.replaceChildren();
+
+  if (notifications.length === 0) {
+    tray.appendChild(el("div", "notif-item", "No new appointments."));
+    return;
+  }
+
+  notifications.forEach((p) => {
+    const risk = getRisk(p);
+    const item = el("div", "notif-item " + (risk === "severe" ? "severe" : "pending"));
+    item.appendChild(el("b", null, p.patient_name || "Unknown patient"));
+    item.appendChild(el("div", null, `${p.organism || "Organism pending"} · ${RISK_LABEL[risk]} MDR risk`));
+    if (p.slot) item.appendChild(el("div", null, p.slot));
+
+    const btn = el("button", null, "Open");
+    btn.addEventListener("click", () => {
+      toggleTray(false);
+      loadPatient(p);
+    });
+    item.appendChild(btn);
+    tray.appendChild(item);
+  });
+}
+
+function toggleTray(force) {
+  const tray = document.getElementById("notifTray");
+  const show = typeof force === "boolean" ? force : tray.style.display !== "block";
+  if (show) renderTray();
+  tray.style.display = show ? "block" : "none";
+  if (show) {
+    notifications.length = 0;
+    document.getElementById("notifCount").textContent = "0";
+  }
+}
+
 /* ================= TABS ================= */
 
-function setupTabs(){
-  const tabs = document.querySelectorAll(".tab");
-
-  tabs.forEach(tab=>{
-    tab.addEventListener("click",()=>{
-      tabs.forEach(t=>t.classList.remove("active"));
+function setupTabs() {
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
-
-      if(tab.innerText.includes("Today")) loadPatients("today");
-      else if(tab.innerText.includes("High")) loadPatients("high");
-      else if(tab.innerText.includes("Follow")) loadPatients("follow");
-      else loadPatients("all");
+      renderPatientList();
     });
   });
 }
 
-function getActiveTab(){
+function getActiveTab() {
   const active = document.querySelector(".tab.active");
-  if(!active) return "today";
+  return (active && active.dataset.filter) || "today";
+}
 
-  if(active.innerText.includes("Today")) return "today";
-  if(active.innerText.includes("High")) return "high";
-  if(active.innerText.includes("Follow")) return "follow";
-  return "all";
+function isToday(ts) {
+  if (!ts) return false;
+  const d = new Date(ts);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
 }
 
 /* ================= LOAD PATIENT LIST ================= */
 
-async function loadPatients(filter){
+async function loadPatients() {
+  const list = document.getElementById("appointmentList");
 
-  const {data,error} = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("appointments")
     .select("*")
     .order("id", { ascending: false });
 
-  if(error){
+  if (error) {
     console.error(error);
+    list.replaceChildren(
+      el("div", "empty-note", "Could not load patients: " + (error.message || "database unreachable"))
+    );
     return;
   }
 
-  let filtered = data;
+  allPatients = data || [];
+  renderPatientList();
+}
 
-  if(filter === "high"){
-    filtered = data.filter(p => p.severity === "severe");
+function filterPatients(filter) {
+  const hasTimestamps = allPatients.some((p) => p.created_at);
+
+  switch (filter) {
+    case "high":
+      return allPatients.filter((p) => getRisk(p) === "severe");
+    case "follow":
+      return allPatients.filter((p) => {
+        const s = String(p.status || "").toLowerCase();
+        return s.includes("follow");
+      });
+    case "today":
+      // Fall back to everything if the table has no created_at column.
+      return hasTimestamps ? allPatients.filter((p) => isToday(p.created_at)) : allPatients;
+    default:
+      return allPatients;
+  }
+}
+
+function renderPatientList() {
+  const list = document.getElementById("appointmentList");
+  const query = document.getElementById("patientSearch").value.trim().toLowerCase();
+
+  let filtered = filterPatients(getActiveTab());
+  if (query) {
+    filtered = filtered.filter((p) =>
+      String(p.patient_name || "").toLowerCase().includes(query)
+    );
   }
 
-  const list = document.getElementById("appointmentList");
-  list.innerHTML = "";
+  list.replaceChildren();
 
-  filtered.forEach(p => {
+  if (filtered.length === 0) {
+    list.appendChild(el("div", "empty-note", "No patients in this view."));
+    return;
+  }
 
-    const tile = document.createElement("div");
-    tile.className = "patient-tile";
+  filtered.forEach((p) => {
+    const risk = getRisk(p);
+    const name = p.patient_name || "Unknown";
 
-    /* ================= HIGHLIGHTING ================= */
-
-    if(p.severity === "severe"){
+    const tile = el("div", "patient-tile");
+    if (risk === "severe") {
       tile.style.borderLeft = "5px solid red";
       tile.style.background = "#ffe6e6";
-    }
-
-    if(p.severity === "moderate"){
+    } else if (risk === "moderate") {
       tile.style.borderLeft = "5px solid orange";
       tile.style.background = "#fff7e6";
     }
 
-    tile.innerHTML = `
-      <div class="patient-avatar">
-        ${p.patient_name.charAt(0).toUpperCase()}
-      </div>
+    tile.appendChild(el("div", "patient-avatar", name.charAt(0).toUpperCase()));
 
-      <div class="patient-info">
-        <div class="patient-name">${p.patient_name}</div>
-        <div class="patient-sub">${p.organism}</div>
-      </div>
+    const info = el("div", "patient-info");
+    info.appendChild(el("div", "patient-name", name));
+    info.appendChild(el("div", "patient-sub", p.organism || "Organism pending"));
+    tile.appendChild(info);
 
-      <div class="patient-severity ${p.severity}">
-        ${p.severity}
-      </div>
-    `;
+    tile.appendChild(el("div", "patient-severity " + risk, RISK_LABEL[risk]));
 
-    tile.onclick = () => loadPatient(p);
-
+    tile.addEventListener("click", () => loadPatient(p));
     list.appendChild(tile);
   });
 }
 
 /* ================= LOAD PATIENT ================= */
 
-async function loadPatient(p){
-
+function loadPatient(p) {
   currentPatient = p;
+  if (!patientChats[p.id]) patientChats[p.id] = [];
 
-  if(!patientChats[p.id]){
-    patientChats[p.id] = [];
-  }
+  const risk = getRisk(p);
 
-  const chatBox = document.getElementById("chatBox");
-  chatBox.innerHTML = "";
-
-  const header = document.createElement("div");
-  header.className = "chat-patient-header";
-  header.innerText = "AI Session: " + p.patient_name;
-  chatBox.appendChild(header);
-
-  patientChats[p.id].forEach(msg=>{
-    addMessage(msg.content, msg.role === "assistant" ? "bot" : "user");
+  // Patient card
+  const card = document.getElementById("patientInfo");
+  card.replaceChildren();
+  card.appendChild(el("b", null, p.patient_name || "Unknown"));
+  card.appendChild(el("div", null, "Organism: " + (p.organism || "pending")));
+  [["ESBL", p.esbl], ["NDM-1", p.ndm1]].forEach(([label, val]) => {
+    const row = el("div", "marker-row", label + ": ");
+    const detected = isDetected(val);
+    row.appendChild(
+      el("span", "marker " + (detected ? "detected" : "not-detected"), val || "Not tested")
+    );
+    card.appendChild(row);
   });
+  if (p.slot) card.appendChild(el("div", null, "Slot: " + p.slot));
 
-  document.getElementById("patientInfo").innerHTML =
-    `<b>${p.patient_name}</b><br>
-     Organism: ${p.organism}<br>
-     Severity: ${p.severity}`;
+  // Chat history
+  const chatBox = document.getElementById("chatBox");
+  chatBox.replaceChildren(el("div", "chat-patient-header", "AI Session: " + (p.patient_name || "")));
+  patientChats[p.id].forEach((msg) =>
+    addMessage(msg.content, msg.role === "assistant" ? "bot" : "user")
+  );
 
-  renderSeverity(p.severity);
-  renderDynamicData(p);
+  renderRisk(risk);
+  renderOptions(p);
+  renderMdr(risk);
 
-  if(patientChats[p.id].length === 0){
-    generateAutoInsight();
-  }
+  if (patientChats[p.id].length === 0) generateAutoInsight();
 }
 
-/* ================= DYNAMIC EFFECTIVENESS ================= */
+/* ================= RISK SCORE ================= */
 
-function renderDynamicData(p){
-
-  const map = {
-    normal: [92,78,55],
-    moderate: [70,60,40],
-    severe: [50,45,30]
-  };
-
-  const values = map[p.severity] || map.normal;
-
-  const cards = document.querySelectorAll(".effect-card");
-
-  cards[0].querySelector(".effect-percent").innerText = values[0] + "% Effective";
-  cards[1].querySelector(".effect-percent").innerText = values[1] + "% Effective";
-  cards[2].querySelector(".effect-percent").innerText = values[2] + "% Effective";
-}
-
-/* ================= SEVERITY BAR ================= */
-
-function renderSeverity(s){
+function renderRisk(risk) {
+  const percent = RISK_SCORE[risk];
+  const color = risk === "severe" ? "#e74c3c" : risk === "moderate" ? "#f39c12" : "#2ecc71";
 
   const bar = document.getElementById("severityBar");
-
-  let percent = 30;
-  let color = "green";
-
-  if(s === "severe"){ percent = 90; color = "red"; }
-  else if(s === "moderate"){ percent = 60; color = "orange"; }
-
   bar.style.width = percent + "%";
   bar.style.background = color;
+  document.getElementById("severityPercent").textContent = percent + "%";
 
-  document.getElementById("severityPercent").innerText = percent + "%";
-
-  renderChart(percent);
+  renderChart(percent, color);
 }
 
-/* ================= CHART ================= */
-
-function renderChart(percent){
-
+function renderChart(percent, color) {
   const ctx = document.getElementById("severityChart");
+  if (chartInstance) chartInstance.destroy();
 
-  if(chartInstance) chartInstance.destroy();
-
-  chartInstance = new Chart(ctx,{
-    type:"doughnut",
-    data:{
-      datasets:[{
-        data:[percent,100-percent],
-        backgroundColor:["#ff4d4d","#e0e0e0"]
-      }]
+  chartInstance = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Risk", ""],
+      datasets: [{ data: [percent, 100 - percent], backgroundColor: [color, "#e0e0e0"] }]
     },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{ legend:{ display:false } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
     }
   });
 }
 
-/* ================= AUTO AI ================= */
+/* ================= OPTIONS + MDR ================= */
 
-async function generateAutoInsight(){
+function renderOptions(p) {
+  const panel = document.getElementById("effectivenessPanel");
+  panel.replaceChildren();
 
-  const prompt = `
-Patient: ${currentPatient.patient_name}
-Organism: ${currentPatient.organism}
-Severity: ${currentPatient.severity}
-
-Provide concise clinical treatment suggestion.
-`;
-
-  const res = await callGroq(prompt);
-
-  patientChats[currentPatient.id].push({role:"assistant",content:res});
-  addMessage(res,"bot");
+  getEmpiricalOptions(p).forEach((o) => {
+    const style = TIER_STYLE[o.tier];
+    const card = el("div", "effect-card " + style.cls);
+    card.appendChild(el("div", "drug-name", o.drug));
+    card.appendChild(el("div", "effect-percent", style.label));
+    if (o.note) card.appendChild(el("div", "effect-note", o.note));
+    panel.appendChild(card);
+  });
 }
 
-/* ================= MANUAL AI ================= */
-
-async function generateInsight(){
-  if(!currentPatient) return;
-
-  const res = await callGroq("Provide clinical management summary.");
-  patientChats[currentPatient.id].push({role:"assistant",content:res});
-  addMessage(res,"bot");
+function renderMdr(risk) {
+  const map = { normal: "mdrLow", moderate: "mdrModerate", severe: "mdrHigh" };
+  ["mdrLow", "mdrModerate", "mdrHigh"].forEach((id) =>
+    document.getElementById(id).classList.toggle("active", id === map[risk])
+  );
 }
 
-/* ================= CHAT ================= */
+/* ================= AI ================= */
 
-async function sendMessage(){
+function patientContext(p) {
+  const opts = getEmpiricalOptions(p)
+    .map((o) => `- ${o.drug}: ${TIER_STYLE[o.tier].label}${o.note ? " (" + o.note + ")" : ""}`)
+    .join("\n");
 
+  return `Current patient (UTI work-up):
+Name: ${p.patient_name || "Unknown"}
+Organism: ${p.organism || "pending"}
+ESBL: ${p.esbl || "not tested"}
+NDM-1: ${p.ndm1 || "not tested"}
+Derived MDR risk: ${RISK_LABEL[getRisk(p)]}
+
+Rule-based empirical tiers shown to the physician:
+${opts}`;
+}
+
+function systemPrompt(p) {
+  return `You are an infectious disease clinical decision-support assistant for a physician.
+Be concise and structured. Base suggestions on the resistance markers provided.
+Note when susceptibility testing, local antibiogram, renal function, allergies or pregnancy status would change the choice.
+Never present a suggestion as final; the physician decides.
+
+${patientContext(p)}`;
+}
+
+async function callGroq(patient, userMsg) {
+  if (!GROQ_API_KEY || GROQ_API_KEY.startsWith("PASTE_")) {
+    throw new Error("Groq API key not set. Add it at the top of doctor.js.");
+  }
+
+  const history = (patientChats[patient.id] || []).slice(-20);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt(patient) },
+          ...history,
+          { role: "user", content: userMsg }
+        ],
+        temperature: 0.3
+      }),
+      signal: controller.signal
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `Groq returned HTTP ${response.status}`);
+    }
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Groq returned an empty response.");
+    return content;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("Groq request timed out.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Runs one AI turn and handles UI state + errors in one place.
+async function runAi(userMsg, { showUser = false, record = true } = {}) {
+  const patient = currentPatient;
+  if (!patient) return;
+
+  if (showUser) addMessage(userMsg, "user");
+
+  const pending = addMessage("Thinking…", "bot pending");
+  setBusy(true);
+
+  try {
+    const reply = await callGroq(patient, userMsg);
+    if (record) {
+      patientChats[patient.id].push({ role: "user", content: userMsg });
+      patientChats[patient.id].push({ role: "assistant", content: reply });
+    }
+    // Only paint the reply if the doctor is still on the same patient.
+    if (currentPatient && currentPatient.id === patient.id) {
+      pending.remove();
+      addMessage(reply, "bot");
+    }
+  } catch (e) {
+    console.error(e);
+    if (currentPatient && currentPatient.id === patient.id) {
+      pending.remove();
+      addMessage("⚠️ " + e.message, "bot error");
+    }
+  } finally {
+    setBusy(false);
+  }
+}
+
+function setBusy(busy) {
+  document.getElementById("sendBtn").disabled = busy;
+  document.getElementById("summaryBtn").disabled = busy;
+}
+
+function generateAutoInsight() {
+  runAi("Give a concise initial empirical treatment suggestion for this patient.");
+}
+
+function generateInsight() {
+  if (!currentPatient) return;
+  runAi("Provide a structured clinical management summary for this patient.", { showUser: true });
+}
+
+function sendMessage() {
   const input = document.getElementById("chatInput");
   const text = input.value.trim();
-
-  if(!text || !currentPatient) return;
-
-  addMessage(text,"user");
-  patientChats[currentPatient.id].push({role:"user",content:text});
-
-  const res = await callGroq(text);
-
-  patientChats[currentPatient.id].push({role:"assistant",content:res});
-  addMessage(res,"bot");
-
+  if (!text || !currentPatient) return;
   input.value = "";
+  runAi(text, { showUser: true });
 }
 
-function addMessage(t,role){
+function addMessage(text, role) {
   const box = document.getElementById("chatBox");
-  const d = document.createElement("div");
-  d.className = role === "user" ? "user-msg" : "bot-msg";
-  d.innerText = t;
+  const cls = role.startsWith("user") ? "user-msg" : "bot-msg" + role.slice(3);
+  const d = el("div", cls, text);
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
-}
-
-/* ================= GROQ ================= */
-
-async function callGroq(msg){
-
-  const history = patientChats[currentPatient.id] || [];
-
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-    method:"POST",
-    headers:{
-      "Authorization":`Bearer ${GROQ_API_KEY}`,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      model:"llama-3.3-70b-versatile",
-      messages:[
-        {role:"system",content:"You are an infectious disease clinical AI."},
-        ...history,
-        {role:"user",content:msg}
-      ],
-      temperature:0.3
-    })
-  });
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  return d;
 }

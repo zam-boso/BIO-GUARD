@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com">
   <title>BIOGUARD AI</title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="./patient.css">
 
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase (bundled locally via npm install) -->
+  <script src="node_modules/@supabase/supabase-js/dist/umd/supabase.js"></script>
 </head>
 
 <body>
@@ -40,19 +42,19 @@
         <div class="card">
           <h3>OPTION 1</h3>
           <p>Current Infection</p>
-          <button onclick="sendMessage(); input.value='yes';">Select</button>
+          <button class="option-btn" data-option="Current Infection">Select</button>
         </div>
 
         <div class="card">
           <h3>OPTION 2</h3>
           <p>General Pathogen Check</p>
-          <button onclick="sendMessage(); input.value='yes';">Select</button>
+          <button class="option-btn" data-option="General Pathogen Check">Select</button>
         </div>
 
         <div class="card">
           <h3>OPTION 3</h3>
           <p>Resistance Analysis</p>
-          <button onclick="sendMessage(); input.value='yes';">Select</button>
+          <button class="option-btn" data-option="Resistance Analysis">Select</button>
         </div>
 
       </div>
@@ -65,17 +67,17 @@
 
           <div class="raw-item">
             <span>Organism</span>
-            <span>E. coli</span>
+            <span id="rawOrganism">Pending</span>
           </div>
 
           <div class="raw-item">
             <span>ESBL</span>
-            <span class="high">Detected</span>
+            <span id="rawEsbl">Pending</span>
           </div>
 
           <div class="raw-item">
             <span>NDM-1</span>
-            <span class="low">Not Detected</span>
+            <span id="rawNdm">Pending</span>
           </div>
 
         </div>
@@ -96,10 +98,9 @@
         <input 
           id="chatInput" 
           type="text" 
-          placeholder="Type your message..." 
-          onkeydown="if(event.key==='Enter'){sendMessage();}"
+          placeholder="Type your message..."
         >
-        <button onclick="sendMessage()">Send</button>
+        <button id="sendBtn">Send</button>
       </div>
 
     </div>

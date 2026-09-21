@@ -425,3 +425,31 @@ body {
 .notif-item button:hover {
   background: #218838;
 }
+/* ================= FIX PASS: dynamic cards, MDR level, notes ================= */
+
+.effectiveness-panel { flex-wrap: wrap; }
+.effect-card { min-width: 150px; }
+.effect-card .drug-name { font-weight: 600; padding-right: 70px; }
+.effect-card .effect-note { font-size: 11px; margin-top: 6px; opacity: 0.95; }
+.effect-card.grey { background: #95a5a6; }
+
+.empty-note { color: #777; font-size: 13px; padding: 6px 0; }
+
+.disclaimer {
+  font-size: 11px;
+  color: #666;
+  margin: -8px 0 15px;
+  padding: 0 4px;
+}
+
+.mdr-bar > div { opacity: 0.35; transition: opacity 0.2s; }
+.mdr-bar > div.active { opacity: 1; font-weight: bold; }
+
+.marker-row { margin-top: 6px; font-size: 13px; }
+.marker { font-weight: 600; }
+.marker.detected { color: #c0392b; }
+.marker.not-detected { color: #27ae60; }
+
+.notif { cursor: pointer; user-select: none; }
+.bot-msg.error { background: #fdecea; color: #a94442; }
+.bot-msg.pending { opacity: 0.6; font-style: italic; }

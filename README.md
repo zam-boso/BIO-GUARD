@@ -1,5 +1,4 @@
-TEAM NAME : THE VANGUARDS
-TEAM MEMBERS : TIYA MEERA N S, AADI KRISHNA 
+**Team:** The Vanguards · Tiya Meera N S, Aadi Krishna
 
 
 # BIOGUARD AI  
@@ -62,13 +61,15 @@ Our goal is not disruption, but responsible integration of AI into clinical work
 - Risk-based early intervention  
 - Ranked antibiotic suggestions  
 - Post-culture treatment optimization  
-- Localized AI architecture (protects patient data privacy)
+- Privacy-first design (target: localized AI processing)
 
 ---
 
 ##  Data Ethics & Privacy
 
-BIOGUARD AI is designed with localized processing principles to protect patient data and avoid unnecessary third-party data exposure.
+BIOGUARD AI is designed around localized processing to protect patient data.
+
+> **Current prototype:** AI responses come from a cloud LLM (Groq, Llama 3), so chat content leaves the device. Moving inference on-premise is on the roadmap. Do not enter real patient data into this build.
 
 ---
 
@@ -84,3 +85,36 @@ BIOGUARD AI is designed with localized processing principles to protect patient 
 ##  Vision
 
 To bridge antimicrobial resistance intelligence with real-time, explainable clinical decision support — ensuring safer and smarter antibiotic prescribing.
+
+---
+
+##  Repository Layout
+
+Two Electron apps share one Supabase database:
+
+| Folder | App | Role |
+|---|---|---|
+| `doctor app/` | BIOGUARD Doctor's Assistive AI | Physician dashboard: patient queue, MDR risk from ESBL / NDM-1 markers, rule-based empirical options, AI clinical assistant |
+| `patient app/` | BIOGUARD Companion Agent | Patient chat: symptom triage, appointment booking, (simulated) lab markers |
+
+When a patient books in the Companion app, the appointment appears live in the Doctor dashboard.
+
+##  Running Locally
+
+Requires [Node.js](https://nodejs.org/) 20+.
+
+```bash
+cd "doctor app"      # or "patient app"
+npm install
+npm start
+```
+
+Service settings are at the top of `doctor app/doctor.js` and `patient app/patient.js`.
+
+Build a Windows installer with `npm run build` (output in `dist/`).
+
+##  Prototype Limitations
+
+- Organism and ESBL / NDM-1 results in the Companion app are **simulated**, standing in for a real genotypic assay.
+- Empirical options in the Doctor app are a **rule-based demo** from markers and organism. They are not clinically validated and do not replace culture & susceptibility testing.
+- Hospitals and appointment slots are placeholders.
