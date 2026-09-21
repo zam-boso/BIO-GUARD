@@ -1,12 +1,12 @@
-/* ================= CONFIG =================
+﻿/* ================= CONFIG =================
  * Paste your keys below (Groq console / Supabase > Project Settings > API).
  * Anything pushed to a public repo should be treated as burnable.
  */
 
 const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4";
 
-const GROQ_API_KEY = "PASTE_YOUR_GROQ_KEY_HERE";
+const GROQ_API_KEY = "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";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -145,7 +145,7 @@ function getEmpiricalOptions(p) {
     opts.push({
       drug: "Ceftazidime-avibactam + Aztreonam",
       tier: "likely",
-      note: "Combination used for metallo-β-lactamase producers. ID consult advised."
+      note: "Combination used for metallo-Î²-lactamase producers. ID consult advised."
     });
     opts.push({
       drug: "Colistin",
@@ -204,7 +204,7 @@ function renderTray() {
     const risk = getRisk(p);
     const item = el("div", "notif-item " + (risk === "severe" ? "severe" : "pending"));
     item.appendChild(el("b", null, p.patient_name || "Unknown patient"));
-    item.appendChild(el("div", null, `${p.organism || "Organism pending"} · ${RISK_LABEL[risk]} MDR risk`));
+    item.appendChild(el("div", null, `${p.organism || "Organism pending"} Â· ${RISK_LABEL[risk]} MDR risk`));
     if (p.slot) item.appendChild(el("div", null, p.slot));
 
     const btn = el("button", null, "Open");
@@ -512,7 +512,7 @@ async function runAi(userMsg, { showUser = false, record = true } = {}) {
 
   if (showUser) addMessage(userMsg, "user");
 
-  const pending = addMessage("Thinking…", "bot pending");
+  const pending = addMessage("Thinkingâ€¦", "bot pending");
   setBusy(true);
 
   try {
@@ -530,7 +530,7 @@ async function runAi(userMsg, { showUser = false, record = true } = {}) {
     console.error(e);
     if (currentPatient && currentPatient.id === patient.id) {
       pending.remove();
-      addMessage("⚠️ " + e.message, "bot error");
+      addMessage("âš ï¸ " + e.message, "bot error");
     }
   } finally {
     setBusy(false);

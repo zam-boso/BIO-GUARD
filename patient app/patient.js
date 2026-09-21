@@ -1,12 +1,12 @@
-/* ================================
+﻿/* ================================
    CONFIG
    Paste your keys below (Groq console / Supabase > Project Settings > API).
 ================================ */
 
 const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4";
 
-const GROQ_API_KEY = "PASTE_YOUR_GROQ_KEY_HERE";
+const GROQ_API_KEY = "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";
 // llama3-8b-8192 was retired by Groq; this is its replacement.
 const GROQ_MODEL = "llama-3.1-8b-instant";
 
@@ -86,7 +86,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   addMessage(
-    `Hi 👋 ${currentPatientName}, I'm your BIOGUARD AI Assistant. Tell me how you're feeling 😊`,
+    `Hi ðŸ‘‹ ${currentPatientName}, I'm your BIOGUARD AI Assistant. Tell me how you're feeling ðŸ˜Š`,
     "bot"
   );
 });
@@ -152,11 +152,11 @@ function sendText(text) {
 
 async function handleGroqAI(userText) {
   if (!GROQ_API_KEY || GROQ_API_KEY.startsWith("PASTE_")) {
-    addMessage("⚠️ AI not configured: add your Groq API key at the top of patient.js.", "bot");
+    addMessage("âš ï¸ AI not configured: add your Groq API key at the top of patient.js.", "bot");
     return;
   }
 
-  const thinking = addMessage("Thinking... 🤖", "bot");
+  const thinking = addMessage("Thinking... ðŸ¤–", "bot");
   setBusy(true);
 
   const controller = new AbortController();
@@ -214,8 +214,8 @@ If symptoms sound urgent (high fever, flank pain, vomiting, blood in urine, conf
     thinking.remove();
     addMessage(
       error.name === "AbortError"
-        ? "⚠️ The AI took too long to respond. Please try again."
-        : "⚠️ AI unavailable: " + error.message,
+        ? "âš ï¸ The AI took too long to respond. Please try again."
+        : "âš ï¸ AI unavailable: " + error.message,
       "bot"
     );
   } finally {
@@ -232,7 +232,7 @@ function handleBookingDecision(isYes) {
   state.awaitingBookingConfirmation = false;
 
   if (!isYes) {
-    addMessage("Alright 😊 I'm here if you need anything else.", "bot");
+    addMessage("Alright ðŸ˜Š I'm here if you need anything else.", "bot");
     return;
   }
 
@@ -242,7 +242,7 @@ function handleBookingDecision(isYes) {
   addMessage(`I recommend visiting ${hospitalData.name}, ${hospitalData.city}.`, "bot");
   addMessage("Please select a preferred time:", "bot");
 
-  addButtons(["Tomorrow – 10:30 AM", "Tomorrow – 3:00 PM", "Friday – 11:15 AM"], bookAppointment);
+  addButtons(["Tomorrow â€“ 10:30 AM", "Tomorrow â€“ 3:00 PM", "Friday â€“ 11:15 AM"], bookAppointment);
 }
 
 /* ================================
@@ -280,7 +280,7 @@ function generateRandomInfection() {
 async function bookAppointment(selectedSlot) {
   if (state.booked) return;
 
-  const status = addMessage("Booking your appointment... ⏳", "bot");
+  const status = addMessage("Booking your appointment... â³", "bot");
   const infection = generateRandomInfection();
 
   const { error } = await supabaseClient.from("appointments").insert([
@@ -300,7 +300,7 @@ async function bookAppointment(selectedSlot) {
 
   if (error) {
     console.error(error);
-    addMessage("❌ Booking failed: " + (error.message || "database unreachable"), "bot");
+    addMessage("âŒ Booking failed: " + (error.message || "database unreachable"), "bot");
     addButtons(["Try again"], () => bookAppointment(selectedSlot));
     return;
   }
@@ -315,7 +315,7 @@ async function bookAppointment(selectedSlot) {
   ndmEl.style.color = infection.ndm1 === "Detected" ? "red" : "green";
 
   addMessage(
-    `✅ Appointment booked: ${selectedSlot} at ${state.selectedHospital.name}. Your doctor can now see your results.`,
+    `âœ… Appointment booked: ${selectedSlot} at ${state.selectedHospital.name}. Your doctor can now see your results.`,
     "bot"
   );
 }
