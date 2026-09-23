@@ -25,7 +25,9 @@
       "!dist/**"
     ],
     "win": {
-      "target": "nsis",
+      "target": [
+        "zip"
+      ],
       "icon": "icon.ico"
     }
   }
