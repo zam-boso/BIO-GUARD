@@ -136,8 +136,31 @@ beside it; that key is public by design and is protected by Row Level Security.
 
 Build a Windows installer with `npm run build` (output in `dist/`).
 
-##  Prototype Limitations
+##  Download
 
-- Organism and ESBL / NDM-1 results in the Companion app are **simulated**, standing in for a real genotypic assay.
-- Empirical options in the Doctor app are a **rule-based demo** from markers and organism. They are not clinically validated and do not replace culture & susceptibility testing.
+Prebuilt Windows apps are on the [Releases page](https://github.com/zam-boso/BIO-GUARD/releases).
+Extract the ZIP and run the `.exe` — no API key or setup needed. The builds are
+unsigned, so Windows may show a warning: click "More info" → "Run anyway".
+
+An internet connection is required. The AI backend is hosted on a free tier that
+sleeps when idle, so the **first reply after a quiet period can take up to a
+minute** while it wakes. Opening
+[the health check](https://bioguard-backend-neno.onrender.com/health) first wakes
+it in advance.
+
+##  Early Beta — What to Expect
+
+This is an early beta built for demonstration. Known gaps:
+
+- **Some buttons and side-panel icons are placeholders** and do nothing yet.
+- **Patient names are randomly generated** each time the Companion app launches.
+  They are not real people, and no real patient data is used anywhere in this build.
+- Organism and ESBL / NDM-1 results in the Companion app are **simulated**,
+  standing in for a real genotypic assay.
+- Empirical options in the Doctor app are a **rule-based demo** derived from the
+  markers and organism. They are **not clinically validated**, do not replace
+  culture & susceptibility testing, and the final decision always rests with the
+  physician.
 - Hospitals and appointment slots are placeholders.
+- The database uses a public anon key with permissive access rules, which suits a
+  demo but is not suitable for real patient data.
