@@ -4,7 +4,7 @@
    BACKEND_URL is the deployed FastAPI service; localhost for development.
 ================================ */
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "https://bioguard-backend-neno.onrender.com";
 
 const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
 // Supabase anon key is public by design; protect data with Row Level Security.
