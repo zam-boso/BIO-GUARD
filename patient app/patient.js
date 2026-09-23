@@ -21,10 +21,6 @@ const input = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
 const patientIdEl = document.getElementById("patientId");
 
-const organismEl = document.getElementById("rawOrganism");
-const esblEl = document.getElementById("rawEsbl");
-const ndmEl = document.getElementById("rawNdm");
-
 /* ================================
    STATE
 ================================ */
@@ -92,10 +88,11 @@ window.addEventListener("DOMContentLoaded", () => {
    MESSAGE UI
 ================================ */
 
-function addMessage(text, sender = "bot") {
+function addMessage(text, sender = "bot", markdown = false) {
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
-  msg.textContent = text;
+  if (markdown) msg.appendChild(renderMarkdown(text));
+  else msg.textContent = text;
   chatMessages.appendChild(msg);
   chatMessages.scrollTop = chatMessages.scrollHeight;
   return msg;
@@ -175,7 +172,7 @@ async function handleAI(userText) {
     state.history.push({ role: "assistant", content: data.reply });
 
     thinking.remove();
-    addMessage(data.reply, "bot");
+    addMessage(data.reply, "bot", true);
 
     if (data.book && !state.booked && !state.awaitingBookingConfirmation) {
       state.awaitingBookingConfirmation = true;
@@ -279,13 +276,6 @@ async function bookAppointment(selectedSlot) {
   }
 
   state.booked = true;
-
-  // Only show lab data once it has actually been saved.
-  organismEl.textContent = infection.name;
-  esblEl.textContent = infection.esbl;
-  ndmEl.textContent = infection.ndm1;
-  esblEl.style.color = infection.esbl === "Detected" ? "red" : "green";
-  ndmEl.style.color = infection.ndm1 === "Detected" ? "red" : "green";
 
   addMessage(
     `✅ Appointment booked: ${selectedSlot} at ${state.selectedHospital.name}. Your doctor can now see your results.`,

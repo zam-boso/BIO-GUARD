@@ -541,8 +541,17 @@ function sendMessage() {
 
 function addMessage(text, role) {
   const box = document.getElementById("chatBox");
-  const cls = role.startsWith("user") ? "user-msg" : "bot-msg" + role.slice(3);
-  const d = el("div", cls, text);
+  const isUser = role.startsWith("user");
+  const cls = isUser ? "user-msg" : "bot-msg" + role.slice(3);
+
+  const d = el("div", cls);
+  if (isUser || role.includes("pending") || role.includes("error")) {
+    d.textContent = text;
+  } else {
+    // AI replies come back as Markdown; render headings, lists and tables.
+    d.appendChild(renderMarkdown(text));
+  }
+
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
   return d;
