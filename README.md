@@ -8,6 +8,24 @@ BIOGUARD AI is an antimicrobial stewardship clinical decision support system des
 
 ---
 
+##  Screenshots
+
+**Doctor dashboard** — patient queue, resistance risk score derived from ESBL / NDM-1 markers, and rule-based empirical options.
+
+![BIOGUARD Doctor dashboard showing a high-MDR-risk patient with ESBL and NDM-1 detected](docs/screenshots/doctor-dashboard.png)
+
+**AI clinical assistant** — structured, marker-aware treatment guidance the physician can question further.
+
+![AI clinical assistant giving a structured empirical recommendation](docs/screenshots/doctor-ai-assistant.png)
+
+**Companion app** — patient-facing triage chat and appointment booking. Bookings appear live in the doctor dashboard.
+
+![BIOGUARD Companion chat offering appointment slots after triage](docs/screenshots/patient-companion.png)
+
+> Patient names shown are randomly generated; no real patient data is used.
+
+---
+
 ##  Problem
 
 The rapid rise of multidrug-resistant (MDR) organisms and the global spread of resistant “superbugs” have increased uncertainty in empirical antibiotic prescribing, particularly in UTI management.
