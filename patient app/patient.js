@@ -1,19 +1,16 @@
-﻿/* ================================
+/* ================================
    CONFIG
-   Paste your keys below (Groq console / Supabase > Project Settings > API).
+   No API keys here. The Groq key lives on the backend (see /backend).
+   BACKEND_URL is the deployed FastAPI service; localhost for development.
 ================================ */
 
+const BACKEND_URL = "http://localhost:8000";
+
 const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
+// Supabase anon key is public by design; protect data with Row Level Security.
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4";
 
-const GROQ_API_KEY = "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";
-// llama3-8b-8192 was retired by Groq; this is its replacement.
-const GROQ_MODEL = "llama-3.1-8b-instant";
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// The model appends this tag when it thinks the patient should see a doctor.
-const BOOK_TAG = "[BOOK]";
 
 /* ================================
    DOM ELEMENTS
@@ -86,7 +83,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   addMessage(
-    `Hi ðŸ‘‹ ${currentPatientName}, I'm your BIOGUARD AI Assistant. Tell me how you're feeling ðŸ˜Š`,
+    `Hi 👋 ${currentPatientName}, I'm your BIOGUARD AI Assistant. Tell me how you're feeling 😊`,
     "bot"
   );
 });
@@ -143,68 +140,44 @@ function sendMessage() {
 function sendText(text) {
   if (state.busy) return;
   addMessage(text, "user");
-  handleGroqAI(text);
+  handleAI(text);
 }
 
 /* ================================
    GROQ AI
 ================================ */
 
-async function handleGroqAI(userText) {
-  if (!GROQ_API_KEY || GROQ_API_KEY.startsWith("PASTE_")) {
-    addMessage("âš ï¸ AI not configured: add your Groq API key at the top of patient.js.", "bot");
-    return;
-  }
-
-  const thinking = addMessage("Thinking... ðŸ¤–", "bot");
+async function handleAI(userText) {
+  const thinking = addMessage("Thinking... \u{1F916}", "bot");
   setBusy(true);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  const timer = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch(`${BACKEND_URL}/ask`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${GROQ_API_KEY}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.4,
-        messages: [
-          {
-            role: "system",
-            content: `You are a friendly patient-facing health assistant for urinary tract infection concerns.
-Keep replies short and plain-language. Do not diagnose or prescribe antibiotics.
-If the symptoms warrant seeing a doctor, say so clearly and end your reply with the exact tag ${BOOK_TAG}.
-If symptoms sound urgent (high fever, flank pain, vomiting, blood in urine, confusion, pregnancy), tell them to seek care promptly and end with ${BOOK_TAG}.`
-          },
-          ...state.history.slice(-12),
-          { role: "user", content: userText }
-        ]
+        role: "patient",
+        messages: [...state.history.slice(-12), { role: "user", content: userText }]
       }),
       signal: controller.signal
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data?.error?.message || `HTTP ${response.status}`);
+      throw new Error(data?.detail || `Backend returned HTTP ${response.status}`);
     }
-
-    const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) throw new Error("Empty response");
-
-    const wantsBooking = raw.includes(BOOK_TAG);
-    const aiReply = raw.split(BOOK_TAG).join("").trim();
+    if (!data.reply) throw new Error("The backend returned an empty reply.");
 
     state.history.push({ role: "user", content: userText });
-    state.history.push({ role: "assistant", content: aiReply });
+    state.history.push({ role: "assistant", content: data.reply });
 
     thinking.remove();
-    addMessage(aiReply, "bot");
+    addMessage(data.reply, "bot");
 
-    if (wantsBooking && !state.booked && !state.awaitingBookingConfirmation) {
+    if (data.book && !state.booked && !state.awaitingBookingConfirmation) {
       state.awaitingBookingConfirmation = true;
       addMessage("Would you like me to book an appointment for you?", "bot");
       addButtons(["Yes", "No"], (label) => handleBookingDecision(label === "Yes"));
@@ -212,12 +185,12 @@ If symptoms sound urgent (high fever, flank pain, vomiting, blood in urine, conf
   } catch (error) {
     console.error(error);
     thinking.remove();
-    addMessage(
-      error.name === "AbortError"
-        ? "âš ï¸ The AI took too long to respond. Please try again."
-        : "âš ï¸ AI unavailable: " + error.message,
-      "bot"
-    );
+
+    let message = error.message;
+    if (error.name === "AbortError") message = "The AI took too long to respond. Please try again.";
+    else if (error instanceof TypeError) message = `Cannot reach the backend at ${BACKEND_URL}. Is it running?`;
+
+    addMessage("\u26A0\uFE0F " + message, "bot");
   } finally {
     clearTimeout(timer);
     setBusy(false);
@@ -232,7 +205,7 @@ function handleBookingDecision(isYes) {
   state.awaitingBookingConfirmation = false;
 
   if (!isYes) {
-    addMessage("Alright ðŸ˜Š I'm here if you need anything else.", "bot");
+    addMessage("Alright 😊 I'm here if you need anything else.", "bot");
     return;
   }
 
@@ -242,7 +215,7 @@ function handleBookingDecision(isYes) {
   addMessage(`I recommend visiting ${hospitalData.name}, ${hospitalData.city}.`, "bot");
   addMessage("Please select a preferred time:", "bot");
 
-  addButtons(["Tomorrow â€“ 10:30 AM", "Tomorrow â€“ 3:00 PM", "Friday â€“ 11:15 AM"], bookAppointment);
+  addButtons(["Tomorrow – 10:30 AM", "Tomorrow – 3:00 PM", "Friday – 11:15 AM"], bookAppointment);
 }
 
 /* ================================
@@ -280,7 +253,7 @@ function generateRandomInfection() {
 async function bookAppointment(selectedSlot) {
   if (state.booked) return;
 
-  const status = addMessage("Booking your appointment... â³", "bot");
+  const status = addMessage("Booking your appointment... ⏳", "bot");
   const infection = generateRandomInfection();
 
   const { error } = await supabaseClient.from("appointments").insert([
@@ -300,7 +273,7 @@ async function bookAppointment(selectedSlot) {
 
   if (error) {
     console.error(error);
-    addMessage("âŒ Booking failed: " + (error.message || "database unreachable"), "bot");
+    addMessage("❌ Booking failed: " + (error.message || "database unreachable"), "bot");
     addButtons(["Try again"], () => bookAppointment(selectedSlot));
     return;
   }
@@ -315,7 +288,7 @@ async function bookAppointment(selectedSlot) {
   ndmEl.style.color = infection.ndm1 === "Detected" ? "red" : "green";
 
   addMessage(
-    `âœ… Appointment booked: ${selectedSlot} at ${state.selectedHospital.name}. Your doctor can now see your results.`,
+    `✅ Appointment booked: ${selectedSlot} at ${state.selectedHospital.name}. Your doctor can now see your results.`,
     "bot"
   );
 }

@@ -1,13 +1,13 @@
-﻿/* ================= CONFIG =================
- * Paste your keys below (Groq console / Supabase > Project Settings > API).
- * Anything pushed to a public repo should be treated as burnable.
+/* ================= CONFIG =================
+ * No API keys here. The Groq key lives on the backend (see /backend).
+ * BACKEND_URL is the deployed FastAPI service; localhost for development.
  */
 
-const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4";
+const BACKEND_URL = "http://localhost:8000";
 
-const GROQ_API_KEY = "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";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const SUPABASE_URL = "https://ipzxppqiktomxbbcrauv.supabase.co";
+// Supabase anon key is public by design; protect data with Row Level Security.
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwenhwcHFpa3RvbXhiYmNyYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxOTk1NzksImV4cCI6MjA4Nzc3NTU3OX0.i2mloYWuxkoX0febaCu_HtZ00weaY514PfXFO0HD_Y4";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -145,7 +145,7 @@ function getEmpiricalOptions(p) {
     opts.push({
       drug: "Ceftazidime-avibactam + Aztreonam",
       tier: "likely",
-      note: "Combination used for metallo-Î²-lactamase producers. ID consult advised."
+      note: "Combination used for metallo-β-lactamase producers. ID consult advised."
     });
     opts.push({
       drug: "Colistin",
@@ -204,7 +204,7 @@ function renderTray() {
     const risk = getRisk(p);
     const item = el("div", "notif-item " + (risk === "severe" ? "severe" : "pending"));
     item.appendChild(el("b", null, p.patient_name || "Unknown patient"));
-    item.appendChild(el("div", null, `${p.organism || "Organism pending"} Â· ${RISK_LABEL[risk]} MDR risk`));
+    item.appendChild(el("div", null, `${p.organism || "Organism pending"} · ${RISK_LABEL[risk]} MDR risk`));
     if (p.slot) item.appendChild(el("div", null, p.slot));
 
     const btn = el("button", null, "Open");
@@ -437,68 +437,48 @@ function renderMdr(risk) {
 /* ================= AI ================= */
 
 function patientContext(p) {
-  const opts = getEmpiricalOptions(p)
-    .map((o) => `- ${o.drug}: ${TIER_STYLE[o.tier].label}${o.note ? " (" + o.note + ")" : ""}`)
-    .join("\n");
-
-  return `Current patient (UTI work-up):
-Name: ${p.patient_name || "Unknown"}
-Organism: ${p.organism || "pending"}
-ESBL: ${p.esbl || "not tested"}
-NDM-1: ${p.ndm1 || "not tested"}
-Derived MDR risk: ${RISK_LABEL[getRisk(p)]}
-
-Rule-based empirical tiers shown to the physician:
-${opts}`;
+  return {
+    name: p.patient_name || "Unknown",
+    organism: p.organism || "",
+    esbl: p.esbl || "",
+    ndm1: p.ndm1 || "",
+    risk: RISK_LABEL[getRisk(p)],
+    options: getEmpiricalOptions(p).map(
+      (o) => `${o.drug}: ${TIER_STYLE[o.tier].label}${o.note ? " (" + o.note + ")" : ""}`
+    )
+  };
 }
 
-function systemPrompt(p) {
-  return `You are an infectious disease clinical decision-support assistant for a physician.
-Be concise and structured. Base suggestions on the resistance markers provided.
-Note when susceptibility testing, local antibiogram, renal function, allergies or pregnancy status would change the choice.
-Never present a suggestion as final; the physician decides.
-
-${patientContext(p)}`;
-}
-
-async function callGroq(patient, userMsg) {
-  if (!GROQ_API_KEY || GROQ_API_KEY.startsWith("PASTE_")) {
-    throw new Error("Groq API key not set. Add it at the top of doctor.js.");
-  }
-
-  const history = (patientChats[patient.id] || []).slice(-20);
+/* The backend adds the system prompt and holds the API key. */
+async function askBackend(patient, userMsg) {
+  const history = (patientChats[patient.id] || []).slice(-12);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  const timer = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch(`${BACKEND_URL}/ask`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt(patient) },
-          ...history,
-          { role: "user", content: userMsg }
-        ],
-        temperature: 0.3
+        role: "doctor",
+        patient: patientContext(patient),
+        messages: [...history, { role: "user", content: userMsg }]
       }),
       signal: controller.signal
     });
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data?.error?.message || `Groq returned HTTP ${response.status}`);
+      throw new Error(data?.detail || `Backend returned HTTP ${response.status}`);
     }
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Groq returned an empty response.");
-    return content;
+    if (!data.reply) throw new Error("The backend returned an empty reply.");
+    return data.reply;
   } catch (e) {
-    if (e.name === "AbortError") throw new Error("Groq request timed out.");
+    if (e.name === "AbortError") throw new Error("The request timed out.");
+    if (e instanceof TypeError) {
+      throw new Error(`Cannot reach the backend at ${BACKEND_URL}. Is it running?`);
+    }
     throw e;
   } finally {
     clearTimeout(timer);
@@ -512,11 +492,11 @@ async function runAi(userMsg, { showUser = false, record = true } = {}) {
 
   if (showUser) addMessage(userMsg, "user");
 
-  const pending = addMessage("Thinkingâ€¦", "bot pending");
+  const pending = addMessage("Thinking…", "bot pending");
   setBusy(true);
 
   try {
-    const reply = await callGroq(patient, userMsg);
+    const reply = await askBackend(patient, userMsg);
     if (record) {
       patientChats[patient.id].push({ role: "user", content: userMsg });
       patientChats[patient.id].push({ role: "assistant", content: reply });
@@ -530,7 +510,7 @@ async function runAi(userMsg, { showUser = false, record = true } = {}) {
     console.error(e);
     if (currentPatient && currentPatient.id === patient.id) {
       pending.remove();
-      addMessage("âš ï¸ " + e.message, "bot error");
+      addMessage("⚠️ " + e.message, "bot error");
     }
   } finally {
     setBusy(false);

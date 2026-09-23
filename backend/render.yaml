@@ -1,0 +1,14 @@
+# Render blueprint: New > Blueprint, point it at this repo.
+# Then add GROQ_API_KEY under the service's Environment tab.
+services:
+  - type: web
+    name: bioguard-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false

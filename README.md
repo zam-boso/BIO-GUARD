@@ -96,6 +96,7 @@ Two Electron apps share one Supabase database:
 |---|---|---|
 | `doctor app/` | BIOGUARD Doctor's Assistive AI | Physician dashboard: patient queue, MDR risk from ESBL / NDM-1 markers, rule-based empirical options, AI clinical assistant |
 | `patient app/` | BIOGUARD Companion Agent | Patient chat: symptom triage, appointment booking, (simulated) lab markers |
+| `backend/` | FastAPI AI service | Holds the Groq API key server-side; both apps call it for AI replies |
 
 When a patient books in the Companion app, the appointment appears live in the Doctor dashboard.
 
@@ -109,7 +110,29 @@ npm install
 npm start
 ```
 
-Service settings are at the top of `doctor app/doctor.js` and `patient app/patient.js`.
+### AI backend
+
+Neither app contains an API key. Both call the FastAPI service in `backend/`,
+which holds the Groq key as a server environment variable:
+
+```
+Doctor / Patient app  ->  POST /ask  ->  backend  ->  Groq
+                                         (GROQ_API_KEY lives here)
+```
+
+Start it before using the chat, and see [backend/README.md](backend/README.md)
+for deployment:
+
+```bash
+cd backend
+pip install -r requirements.txt
+set GROQ_API_KEY=gsk_your_key      # macOS/Linux: export GROQ_API_KEY=gsk_...
+uvicorn main:app --reload --port 8000
+```
+
+Once deployed, set `BACKEND_URL` at the top of `doctor app/doctor.js` and
+`patient app/patient.js` to the service URL. The Supabase URL and anon key sit
+beside it; that key is public by design and is protected by Row Level Security.
 
 Build a Windows installer with `npm run build` (output in `dist/`).
 
